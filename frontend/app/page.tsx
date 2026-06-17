@@ -88,9 +88,9 @@ export default function HomePage() {
             <Link href="/auth/register" className="btn-primary text-base px-8 py-3.5 glow-brand">
               Start Your Journey <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link href="/auth/login?demo=admin" className="btn-secondary text-base px-8 py-3.5">
+            {/* <Link href="/auth/login?demo=admin" className="btn-secondary text-base px-8 py-3.5">
               View Admin Demo
-            </Link>
+            </Link> */}
           </div>
 
        
