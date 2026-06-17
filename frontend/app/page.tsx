@@ -81,7 +81,7 @@ export default function HomePage() {
 
           <p className="max-w-2xl mx-auto text-dark-400 text-lg md:text-xl leading-relaxed mb-12 animate-slide-up" style={{ animationDelay: '0.1s' }}>
             Digitize your entire campus placement lifecycle. AI matches students to roles,
-            analyzes resumes, and prepares candidates for technical interviews all in one platform. Under the Admin's supervision!
+            analyzes resumes, gives suggestions and prepares candidates for technical interviews all in one platform. Under the Admin's supervision!
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
