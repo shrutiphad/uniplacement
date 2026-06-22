@@ -1,7 +1,7 @@
 const { notifyApplicationStatusChange } = require('../utils/notificationHelper');
 const Application = require('../models/application');
 const Company = require('../models/company');
-const User = require('../models/User');
+const User = require('../models/user');
 const { successResponse, errorResponse } = require('../utils/response');
 
 //  Apply to a Role 

@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const User = require('../models/user');
 const { cloudinary, upload } = require('../config/cloudinary');
 const { successResponse, errorResponse } = require('../utils/response');
 

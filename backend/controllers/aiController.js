@@ -12,7 +12,7 @@ const { generateAdvancedInterviewPrep } = require('../services/interviewPrepServ
 const { mockInterviewChat } = require('../services/aiService');
 
 const Company      = require('../models/company');
-const User         = require('../models/User');
+const User         = require('../models/user');
 const Application  = require('../models/application');
 const ResumeAnalysis = require('../models/resumeAnalysis');
 const JDAnalysis   = require('../models/jdAnalysis');

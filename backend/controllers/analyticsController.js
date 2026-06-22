@@ -1,6 +1,6 @@
 const Application = require('../models/application');
 const Company = require('../models/company');
-const User = require('../models/User');
+const User = require('../models/user');
 const { successResponse, errorResponse } = require('../utils/response');
 
 //  Admin: Overview Stats 
