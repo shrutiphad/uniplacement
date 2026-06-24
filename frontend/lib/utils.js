@@ -26,7 +26,7 @@ export const STATUS_COLORS = {
 };
 
 export const DEPARTMENTS = [
-  'Computer Science', 'Information Technology', 'Electronics',
+  'Computer Science', 'Information Technology', 'Electronics & Telecommunication',
   'Mechanical',AI & DS, 
 ];
 
