@@ -27,7 +27,7 @@ export const STATUS_COLORS = {
 
 export const DEPARTMENTS = [
   'Computer Science', 'Information Technology', 'Electronics',
-  'Mechanical', 'Civil',
+  'Mechanical',
 ];
 
 export const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
