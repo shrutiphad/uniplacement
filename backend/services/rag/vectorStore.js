@@ -1,5 +1,5 @@
 const OpenAI = require('openai');
-const ResumeVector = require('../../models/resumeVector.js');
+const ResumeVector = require('../../models/ResumeVector.js');
 const { patchOpenAI } = require('../../utils/openaiRetry');
 const openai = patchOpenAI(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
 

@@ -22,4 +22,4 @@ const resumeVectorSchema = new mongoose.Schema(
 resumeVectorSchema.index({ userId: 1, type: 1 });
 resumeVectorSchema.index({ roleId: 1, type: 1 });
 
-module.exports = mongoose.model.ResumeVector || mongoose.model('ResumeVector', resumeVectorSchema);
+module.exports = mongoose.models.ResumeVector || mongoose.model('ResumeVector', resumeVectorSchema);

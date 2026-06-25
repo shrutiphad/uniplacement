@@ -56,4 +56,4 @@ const resumeAnalysisSchema = new mongoose.Schema(
 
 resumeAnalysisSchema.index({ studentId: 1, roleId: 1 });
 
-module.exports = mongoose.model.ResumeAnalysis || mongoose.model('ResumeAnalysis', resumeAnalysisSchema);
+module.exports = mongoose.models.ResumeAnalysis || mongoose.model('ResumeAnalysis', resumeAnalysisSchema);

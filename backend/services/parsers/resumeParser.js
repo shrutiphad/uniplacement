@@ -1,7 +1,7 @@
 const OpenAI = require('openai');
 
 const { patchOpenAI } = require('../../utils/openaiRetry');
-const openai = patchOpenAI(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));``
+const openai = patchOpenAI(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
 
 //  Known skill taxonomy for normalization 
 const SKILL_ALIASES = {
@@ -85,7 +85,8 @@ const extractContactInfo = (text) => {
 
 //  Skill extraction from skills section 
 const extractSkillsFromText = (skillText) => {
-  const delimiters = /[,|•\n\t\/]+/;
+  // const delimiters = /[,|•\n\t\/]+/;
+  const delimiters = /[,|\u2022\n\t\/•]+/;
   const raw = skillText.split(delimiters).map((s) => s.trim()).filter((s) => s.length > 1 && s.length < 40);
   return [...new Set(raw.map(normalizeSkill))].filter(Boolean);
 };

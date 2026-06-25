@@ -33,4 +33,4 @@ const jdAnalysisSchema = new mongoose.Schema(
 
 jdAnalysisSchema.index({ companyId: 1, roleId: 1 }, { unique: true });
 
-module.exports = mongoose.model.JDAnalysis || mongoose.model('JDAnalysis', jdAnalysisSchema);
+module.exports = mongoose.models.JDAnalysis || mongoose.model('JDAnalysis', jdAnalysisSchema);
