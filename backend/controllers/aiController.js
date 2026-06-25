@@ -55,6 +55,7 @@ exports.analyzeResume = async (req, res, next) => {
     // catch (err) { return errorResponse(res, `PDF parse failed: ${err.message}`, 422); }
 
     // Add better error logging
+    let resumeText;
 try { 
   console.log('[AI] Parsing PDF from:', student.resumeURL);
   resumeText = await parsePDFFromURL(student.resumeURL);
