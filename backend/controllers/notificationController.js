@@ -1,4 +1,4 @@
-const Notification = require('../models/notification');
+const Notification = require('../models/Notification');
 const { successResponse, errorResponse } = require('../utils/response');
 
 // Create a notification (internal use)

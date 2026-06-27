@@ -1,5 +1,5 @@
-const Company = require('../models/company');
-const User = require('../models/user');
+const Company = require('../models/Company');
+const User = require('../models/User');
 const { successResponse, errorResponse } = require('../utils/response');
 
 //  Create Company (Admin) 
