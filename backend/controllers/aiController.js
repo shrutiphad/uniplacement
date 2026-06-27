@@ -34,43 +34,46 @@ const parsePDFFromURL = async (url) => {
   return data.text;
 };
 
-//  POST /api/ai/analyze-resume 
 exports.analyzeResume = async (req, res, next) => {
   try {
     const { companyId, roleId, applicationId, forceRefresh } = req.body;
     const student = await User.findById(req.user.id);
     if (!student.resumeURL) return errorResponse(res, 'No resume uploaded. Go to Profile → Upload Resume.', 400);
 
-    // Cache check
-    // if (!forceRefresh && companyId && roleId) {
-    //   const cached = await ResumeAnalysis.findOne({ studentId: student._id, companyId, roleId }).sort({ analyzedAt: -1 });
-    //   if (cached && (Date.now() - new Date(cached.analyzedAt).getTime() < 24 * 60 * 60 * 1000)) {
-    //     return successResponse(res, { analysis: cached, jdAnalysis: null, cached: true }, 'Cached analysis returned');
-    //   }
-    // }
+    // ── Cache check ──────────────────────────────────────────
+    let cachedAnalysis = null;  // ← declare OUTSIDE the if block
 
-    if (cached && (Date.now() - new Date(cached.analyzedAt).getTime() < 24 * 60 * 60 * 1000)) {
-  const cachedJD = companyId && roleId
-    ? await JDAnalysis.findOne({ companyId, roleId })
-    : null;
-  return successResponse(res, { analysis: cached, jdAnalysis: cachedJD, cached: true });
-}
+    if (!forceRefresh && companyId && roleId) {
+      cachedAnalysis = await ResumeAnalysis.findOne({
+        studentId: student._id,
+        companyId,
+        roleId
+      }).sort({ analyzedAt: -1 });
+
+      if (
+        cachedAnalysis &&
+        (Date.now() - new Date(cachedAnalysis.analyzedAt).getTime() < 24 * 60 * 60 * 1000)
+      ) {
+        const cachedJD = await JDAnalysis.findOne({ companyId, roleId });
+        return successResponse(
+          res,
+          { analysis: cachedAnalysis, jdAnalysis: cachedJD, cached: true },
+          'Cached analysis returned'
+        );
+      }
+    }
+    // ── End cache check ──────────────────────────────────────
 
     // Parse resume PDF
-    // let resumeText;
-    // try { resumeText = await parsePDFFromURL(student.resumeURL); }
-    // catch (err) { return errorResponse(res, `PDF parse failed: ${err.message}`, 422); }
-
-    // Add better error logging
     let resumeText;
-      try { 
-        console.log('[AI] Parsing PDF from:', student.resumeURL);
-        resumeText = await parsePDFFromURL(student.resumeURL);
-        console.log('[AI] PDF parsed successfully, text length:', resumeText.length);
-      } catch (err) { 
-        console.error('[AI] PDF parse error:', err);
-        return errorResponse(res, `PDF parse failed: ${err.message}. Ensure PDF is text-based (not scanned).`, 422); 
-      }
+    try {
+      console.log('[AI] Parsing PDF from:', student.resumeURL);
+      resumeText = await parsePDFFromURL(student.resumeURL);
+      console.log('[AI] PDF parsed successfully, text length:', resumeText.length);
+    } catch (err) {
+      console.error('[AI] PDF parse error:', err);
+      return errorResponse(res, `PDF parse failed: ${err.message}. Ensure PDF is text-based (not scanned).`, 422);
+    }
 
     // Role context
     let requiredSkills = [];
@@ -82,15 +85,15 @@ exports.analyzeResume = async (req, res, next) => {
       const company = await Company.findById(companyId);
       if (!company) return errorResponse(res, 'Company not found', 404);
       const role = company.roles.id(roleId);
-      if (!role)    return errorResponse(res, 'Role not found', 404);
+      if (!role) return errorResponse(res, 'Role not found', 404);
 
       requiredSkills = role.requiredSkills;
       jobDescription = role.jobDescription;
-      companyName    = company.name;
+      companyName = company.name;
 
-      // JD analysis (cached)
       const jdHash = crypto.createHash('md5').update(jobDescription).digest('hex');
       const cachedJD = await JDAnalysis.findOne({ companyId, roleId });
+
       if (cachedJD && cachedJD.jdHash === jdHash) {
         jdAnalysis = cachedJD;
       } else {
@@ -105,22 +108,18 @@ exports.analyzeResume = async (req, res, next) => {
       }
     }
 
-    // Sequential calls to avoid bursting OpenAI RPM limit.
-    // Each is wrapped in withRetry so a 429 auto-retries with backoff.
-    const parsedResume = await withRetry(() =>
-      deepParseWithAI(resumeText)
-    );
-    const ragAnalysis = await withRetry(() =>
-      ragAnalyzeResume(resumeText, jobDescription, requiredSkills)
-    );
-    // Fire-and-forget embedding store — don't block the response
+    // Sequential AI calls with retry
+    const parsedResume = await withRetry(() => deepParseWithAI(resumeText));
+    const ragAnalysis = await withRetry(() => ragAnalyzeResume(resumeText, jobDescription, requiredSkills));
+
+    // Fire-and-forget embedding
     storeResumeEmbedding(student._id, resumeText, {
       parsedSkills: student.skills,
       department: student.department,
       cgpa: student.cgpa,
     }).catch((e) => console.warn('[Embedding store]', e.message));
 
-    // Semantic score via vector similarity
+    // Semantic score
     let semanticScore = ragAnalysis.semanticScore || 0;
     try {
       const semScore = await getSemanticFitScore(resumeText, jobDescription);
@@ -130,7 +129,7 @@ exports.analyzeResume = async (req, res, next) => {
     // ATS score
     const atsScore = computeATSScore(parsedResume, requiredSkills);
 
-    // Profile vs JD comparison
+    // Profile comparison
     const profileComparison = jdAnalysis ? compareProfileToJD(student, jdAnalysis) : null;
 
     // Blended score
@@ -146,29 +145,29 @@ exports.analyzeResume = async (req, res, next) => {
       (student.cgpa ? Math.min(100, student.cgpa * 10) : 50) * 0.2
     ));
 
-    // Persist analysis
+    // Persist
     const analysis = await ResumeAnalysis.findOneAndUpdate(
       { studentId: student._id, companyId: companyId || null, roleId: roleId || null },
       {
         studentId: student._id,
         companyId: companyId || undefined,
-        roleId:    roleId || undefined,
+        roleId: roleId || undefined,
         parsedData: parsedResume,
-        fitScore:    ragAnalysis.fitScore || 0,
+        fitScore: ragAnalysis.fitScore || 0,
         semanticScore,
         overallScore: finalFitScore,
         missingSkills: ragAnalysis.missingSkills || [],
         partialSkills: ragAnalysis.partialSkills || [],
-        suggestions:   ragAnalysis.suggestions || [],
-        strengths:     ragAnalysis.strengths || [],
-        redFlags:      ragAnalysis.redFlags || [],
-        summary:       ragAnalysis.summary || '',
+        suggestions: ragAnalysis.suggestions || [],
+        strengths: ragAnalysis.strengths || [],
+        redFlags: ragAnalysis.redFlags || [],
+        summary: ragAnalysis.summary || '',
         atsScore,
-        resumeStructureScore:    ragAnalysis.resumeStructureScore,
+        resumeStructureScore: ragAnalysis.resumeStructureScore,
         resumeStructureFeedback: ragAnalysis.resumeStructureFeedback,
-        atsTips:      ragAnalysis.atsTips || [],
+        atsTips: ragAnalysis.atsTips || [],
         interviewReadiness: ragAnalysis.interviewReadiness,
-        confidenceLevel:    ragAnalysis.confidenceLevel,
+        confidenceLevel: ragAnalysis.confidenceLevel,
         analyzedAt: new Date(),
       },
       { upsert: true, new: true }
@@ -181,16 +180,21 @@ exports.analyzeResume = async (req, res, next) => {
         fitScore: finalFitScore,
         aiAnalysis: {
           extractedSkills: parsedResume.skills || [],
-          missingSkills:   ragAnalysis.missingSkills || [],
-          suggestions:     ragAnalysis.suggestions || [],
-          summary:         ragAnalysis.summary || '',
+          missingSkills: ragAnalysis.missingSkills || [],
+          suggestions: ragAnalysis.suggestions || [],
+          summary: ragAnalysis.summary || '',
         },
       });
     }
 
-    return successResponse(res, { analysis, jdAnalysis, profileComparison, readinessScore, cached: false },
-      'Resume analyzed with RAG + semantic embeddings');
+    return successResponse(
+      res,
+      { analysis, jdAnalysis, profileComparison, readinessScore, cached: false },
+      'Resume analyzed with RAG + semantic embeddings'
+    );
+
   } catch (error) {
+    console.error('[analyzeResume] FULL ERROR:', error);
     if (error?.status === 429) return errorResponse(res, 'OpenAI rate limit. Please wait a moment.', 429);
     next(error);
   }
