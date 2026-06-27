@@ -40,6 +40,8 @@ const userSchema = new mongoose.Schema(
     phone: { type: String },
     isProfileComplete: { type: Boolean, default: false },
     refreshToken: { type: String, select: false },
+    previousRefreshToken: { type: String, select: false },
+    previousRefreshTokenExpiresAt: { type: Date, select: false },
   },
   { timestamps: true }
 );

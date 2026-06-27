@@ -80,26 +80,39 @@ exports.refreshToken = async (req, res, next) => {
     if (!refreshToken) return errorResponse(res, 'Refresh token required', 400);
 
     const decoded = verifyRefreshToken(refreshToken);
-    const user = await User.findById(decoded.id).select('+refreshToken');
+    const user = await User.findById(decoded.id).select('+refreshToken +previousRefreshToken +previousRefreshTokenExpiresAt');
+    if (!user) return errorResponse(res, 'Invalid refresh token', 401);
 
-    if (!user || user.refreshToken !== refreshToken) {
-      return errorResponse(res, 'Invalid refresh token', 401);
+    // Normal case: token matches the current one on file → rotate as usual
+    if (user.refreshToken === refreshToken) {
+      const newAccessToken = generateAccessToken({ id: user._id, role: user.role });
+      const newRefreshToken = generateRefreshToken({ id: user._id });
+
+      await User.findByIdAndUpdate(user._id, {
+        refreshToken: newRefreshToken,
+        // Keep the just-superseded token valid for a short grace window — covers a second
+        // open tab, or a request that was already in flight when this rotation happened,
+        // so it doesn't get logged out just for being a few hundred ms behind.
+        previousRefreshToken: refreshToken,
+        previousRefreshTokenExpiresAt: new Date(Date.now() + 30 * 1000),
+      });
+
+      return successResponse(res, { accessToken: newAccessToken, refreshToken: newRefreshToken }, 'Token refreshed');
     }
 
-    const newAccessToken = generateAccessToken({ id: user._id, role: user.role });
-    const newRefreshToken = generateRefreshToken({ id: user._id });
-
-    const updated = await User.findOneAndUpdate(
-      { _id: user._id, refreshToken },
-      { refreshToken: newRefreshToken },
-      { new: true }
-    );
-
-    if (!updated) {
-      return errorResponse(res, 'Invalid refresh token', 401);
+    // Grace case: token matches the just-superseded one and we're still inside the window
+    // → don't rotate again (that would just create the same race one step later), just
+    // hand back the already-current refresh token so this tab/request catches up.
+    if (
+      user.previousRefreshToken === refreshToken &&
+      user.previousRefreshTokenExpiresAt &&
+      user.previousRefreshTokenExpiresAt.getTime() > Date.now()
+    ) {
+      const newAccessToken = generateAccessToken({ id: user._id, role: user.role });
+      return successResponse(res, { accessToken: newAccessToken, refreshToken: user.refreshToken }, 'Token refreshed');
     }
 
-    return successResponse(res, { accessToken: newAccessToken, refreshToken: newRefreshToken }, 'Token refreshed');
+    return errorResponse(res, 'Invalid refresh token', 401);
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
       return errorResponse(res, 'Refresh token expired. Please login again.', 401);
