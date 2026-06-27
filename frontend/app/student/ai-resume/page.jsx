@@ -70,50 +70,92 @@ export default function AIResumePage() {
   // const analyze = async (force = false) => {
   //   if (!user?.resumeURL) { toast.error('Upload your resume in Profile first!'); return; }
 
-    const analyze = async (force = false) => {
-  // Wait for user to fully load
+//     const analyze = async (force = false) => {
+//   // Wait for user to fully load
+//   if (!user) {
+//     toast.error('Loading user data...');
+//     return;
+//   }
+  
+//   if (!user.resumeURL) { 
+//     toast.error('Upload your resume in Profile first!'); 
+//     return; 
+//   }
+ 
+
+    
+//     setLoading(true); setResult(null);
+//     try {
+//       const { data } = await aiApi.analyzeResume({
+//         companyId: selCo || undefined,
+//         roleId: selRole || undefined,
+//         forceRefresh: force,
+//       });
+//       setResult(data);
+//       if (data.readinessScore) updateLocalUser({ readinessScore: data.readinessScore });
+//       toast.success(data.cached ? 'Cached analysis loaded' : 'Deep AI analysis complete 🎯');
+//     }
+//     //  catch (err) {
+//     //   toast.error(err.response?.data?.message || 'Analysis failed. Try again.');
+//     // } finally { setLoading(false); }
+    
+//   catch (err) {
+//   const msg = err.response?.data?.message || err.message || 'Analysis failed';
+//   console.error('[AI Resume] Error:', err.response?.data || err);
+  
+//   if (err.response?.status === 422) {
+//     toast.error(`PDF Error: ${msg}. Try re-uploading your resume as a text-based PDF.`);
+//   } else if (err.response?.status === 429) {
+//     toast.error('OpenAI rate limit reached. Please wait a few minutes and try again.');
+//   } else if (err.response?.status === 400 && msg.includes('No resume')) {
+//     toast.error('No resume found. Please upload your resume in Profile first.');
+//   } else {
+//     toast.error(`Analysis failed: ${msg}`);
+//   }
+// }
+//   };
+
+//resume error fixed 
+
+const analyze = async (force = false) => {
   if (!user) {
     toast.error('Loading user data...');
     return;
   }
-  
-  if (!user.resumeURL) { 
-    toast.error('Upload your resume in Profile first!'); 
-    return; 
+  if (!user.resumeURL) {
+    toast.error('Upload your resume in Profile first!');
+    return;
   }
- 
 
-    
-    setLoading(true); setResult(null);
-    try {
-      const { data } = await aiApi.analyzeResume({
-        companyId: selCo || undefined,
-        roleId: selRole || undefined,
-        forceRefresh: force,
-      });
-      setResult(data);
-      if (data.readinessScore) updateLocalUser({ readinessScore: data.readinessScore });
-      toast.success(data.cached ? 'Cached analysis loaded' : 'Deep AI analysis complete 🎯');
+  setLoading(true);
+  setResult(null);
+
+  try {
+    const { data } = await aiApi.analyzeResume({
+      companyId: selCo || undefined,
+      roleId: selRole || undefined,
+      forceRefresh: force,
+    });
+    setResult(data);
+    if (data.readinessScore) updateLocalUser({ readinessScore: data.readinessScore });
+    toast.success(data.cached ? 'Cached analysis loaded' : 'Deep AI analysis complete 🎯');
+  } catch (err) {
+    const msg = err.response?.data?.message || err.message || 'Analysis failed';
+    console.error('[AI Resume] Error:', err.response?.data || err);
+
+    if (err.response?.status === 422) {
+      toast.error(`PDF Error: ${msg}. Try re-uploading your resume as a text-based PDF.`);
+    } else if (err.response?.status === 429) {
+      toast.error('OpenAI rate limit reached. Please wait a few minutes and try again.');
+    } else if (err.response?.status === 400 && msg.includes('No resume')) {
+      toast.error('No resume found. Please upload your resume in Profile first.');
+    } else {
+      toast.error(`Analysis failed: ${msg}`);
     }
-    //  catch (err) {
-    //   toast.error(err.response?.data?.message || 'Analysis failed. Try again.');
-    // } finally { setLoading(false); }
-    
-  catch (err) {
-  const msg = err.response?.data?.message || err.message || 'Analysis failed';
-  console.error('[AI Resume] Error:', err.response?.data || err);
-  
-  if (err.response?.status === 422) {
-    toast.error(`PDF Error: ${msg}. Try re-uploading your resume as a text-based PDF.`);
-  } else if (err.response?.status === 429) {
-    toast.error('OpenAI rate limit reached. Please wait a few minutes and try again.');
-  } else if (err.response?.status === 400 && msg.includes('No resume')) {
-    toast.error('No resume found. Please upload your resume in Profile first.');
-  } else {
-    toast.error(`Analysis failed: ${msg}`);
+  } finally {
+    setLoading(false);
   }
-}
-  };
+};
 
   const a   = result?.analysis;
   const jd  = result?.jdAnalysis;
