@@ -63,14 +63,14 @@ exports.analyzeResume = async (req, res, next) => {
 
     // Add better error logging
     let resumeText;
-try { 
-  console.log('[AI] Parsing PDF from:', student.resumeURL);
-  resumeText = await parsePDFFromURL(student.resumeURL);
-  console.log('[AI] PDF parsed successfully, text length:', resumeText.length);
-} catch (err) { 
-  console.error('[AI] PDF parse error:', err);
-  return errorResponse(res, `PDF parse failed: ${err.message}. Ensure PDF is text-based (not scanned).`, 422); 
-}
+      try { 
+        console.log('[AI] Parsing PDF from:', student.resumeURL);
+        resumeText = await parsePDFFromURL(student.resumeURL);
+        console.log('[AI] PDF parsed successfully, text length:', resumeText.length);
+      } catch (err) { 
+        console.error('[AI] PDF parse error:', err);
+        return errorResponse(res, `PDF parse failed: ${err.message}. Ensure PDF is text-based (not scanned).`, 422); 
+      }
 
     // Role context
     let requiredSkills = [];
