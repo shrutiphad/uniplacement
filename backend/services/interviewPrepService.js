@@ -1,9 +1,7 @@
-const OpenAI = require('openai');
+const { chatCompletion } = require('../utils/groqClient');
 const { analyzeJobDescription } = require('./parsers/jdAnalyzer');
 
 
-const { patchOpenAI } = require('../utils/openaiRetry');
-const openai = patchOpenAI(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
 
 // Learning resource database 
 const RESOURCE_MAP = {
@@ -186,18 +184,10 @@ Rules:
 - Return ONLY valid JSON
 `;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: 'You are an elite interview coach. Return only valid JSON.' },
-      { role: 'user', content: prompt }
-    ],
-    temperature: 0.4,
-    max_tokens: 4000,
-    response_format: { type: 'json_object' },
-  });
-
-  const prep = JSON.parse(response.choices[0].message.content);
+ const prep = await chatCompletion([
+  { role: 'system', content: 'You are an elite interview coach. Return only valid JSON.' },
+  { role: 'user', content: prompt }
+], { temperature: 0.4, max_tokens: 4000 });
 
   return {
     ...prep,

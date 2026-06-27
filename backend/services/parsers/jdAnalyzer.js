@@ -1,6 +1,7 @@
 const OpenAI = require('openai');
 const { ragAnalyzeJD } = require('../rag/ragPipeline');
 const { patchOpenAI } = require('../../utils/openaiRetry');
+const { normalizeSkill } = require('./resumeParser');
 const openai = patchOpenAI(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
 
 //  Heuristic seniority detector 
@@ -113,11 +114,21 @@ const analyzeJobDescription = async (jdText, companyName = '') => {
 };
 
 //  Compare student profile vs JD 
-const compareProfileToJD = (studentProfile, jdAnalysis) => {
-  const studentSkillsLower = (studentProfile.skills || []).map((s) => s.toLowerCase());
+// parsedResumeSkills (optional) = AI-normalized skills extracted from the actual resume
+// (deepParseWithAI). We merge these with the raw profile field so a skill that's on the
+// resume but missing from the self-entered profile still counts as a match.
+const compareProfileToJD = (studentProfile, jdAnalysis, parsedResumeSkills = []) => {
+  const studentSkillsLower = [
+    ...new Set(
+      [...(studentProfile.skills || []), ...parsedResumeSkills]
+        .map((s) => normalizeSkill(s).toLowerCase())
+    ),
+  ];
 
-  const mustHave = jdAnalysis.mustHaveSkills || [];
-  const niceToHave = jdAnalysis.niceToHaveSkills || [];
+  // Normalize JD skill names through the same alias map so e.g. "Node" / "Node.js" / "NodeJS"
+  // in a JD all resolve to the same canonical skill the resume parser would have produced.
+  const mustHave = (jdAnalysis.mustHaveSkills || []).map(normalizeSkill);
+  const niceToHave = (jdAnalysis.niceToHaveSkills || []).map(normalizeSkill);
 
   const mustHaveMatched = mustHave.filter((s) => studentSkillsLower.includes(s.toLowerCase()));
   const niceToHaveMatched = niceToHave.filter((s) => studentSkillsLower.includes(s.toLowerCase()));

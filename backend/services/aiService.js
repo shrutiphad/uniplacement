@@ -1,9 +1,5 @@
-const OpenAI = require('openai');
+const { chatCompletion } = require('../utils/groqClient');
 
-const { patchOpenAI } = require('../utils/openaiRetry');
-const openai = patchOpenAI(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
-
-//  Analyze Resume Against Job Role 
 const analyzeResume = async (resumeText, requiredSkills, jobDescription) => {
   const prompt = `
 You are an expert AI resume analyzer for a campus placement platform.
@@ -41,19 +37,12 @@ Rules:
 - Return ONLY the JSON object, nothing else
 `;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.3,
-    max_tokens: 1500,
-    response_format: { type: 'json_object' },
-  });
-
-  const raw = response.choices[0].message.content;
-  return JSON.parse(raw);
+  return await chatCompletion(
+    [{ role: 'user', content: prompt }],
+    { temperature: 0.3, max_tokens: 2000 }
+  );
 };
 
-//  Generate Interview Prep 
 const generateInterviewPrep = async (roleTitle, jobDescription, requiredSkills, studentSkills = []) => {
   const missingSkills = requiredSkills.filter(
     (s) => !studentSkills.map((sk) => sk.toLowerCase()).includes(s.toLowerCase())
@@ -97,19 +86,12 @@ Rules:
 - Return ONLY the JSON object
 `;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.5,
-    max_tokens: 2500,
-    response_format: { type: 'json_object' },
-  });
-
-  const raw = response.choices[0].message.content;
-  return JSON.parse(raw);
+  return await chatCompletion(
+    [{ role: 'user', content: prompt }],
+    { temperature: 0.5, max_tokens: 2500 }
+  );
 };
 
-//  Mock Interview Chatbot 
 const mockInterviewChat = async (question, userAnswer, roleContext) => {
   const prompt = `
 You are a strict but fair technical interviewer for a ${roleContext.roleTitle} position.
@@ -130,15 +112,10 @@ Evaluate the answer and respond as JSON:
 Score out of 10. Return ONLY JSON.
 `;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.4,
-    max_tokens: 600,
-    response_format: { type: 'json_object' },
-  });
-
-  return JSON.parse(response.choices[0].message.content);
+  return await chatCompletion(
+    [{ role: 'user', content: prompt }],
+    { temperature: 0.4, max_tokens: 600 }
+  );
 };
 
 module.exports = { analyzeResume, generateInterviewPrep, mockInterviewChat };

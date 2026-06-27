@@ -2,10 +2,9 @@ const rateLimit = require('express-rate-limit');
 const pdfParse = require('pdf-parse');
 const axios = require('axios');
 const crypto = require('crypto');
-const { withRetry } = require('../utils/openaiRetry');
 
 const { ragAnalyzeResume } = require('../services/rag/ragPipeline');
-const { storeResumeEmbedding, storeJDEmbedding, getSemanticFitScore, findSimilarResumes } = require('../services/rag/vectorStore');
+const { embedText, storeResumeEmbedding, storeJDEmbedding, getSemanticFitScore, findSimilarResumes } = require('../services/rag/vectorStore');
 const { deepParseWithAI, computeATSScore } = require('../services/parsers/resumeParser');
 const { analyzeJobDescription, compareProfileToJD } = require('../services/parsers/jdAnalyzer');
 const { generateAdvancedInterviewPrep } = require('../services/interviewPrepService');
@@ -108,29 +107,44 @@ exports.analyzeResume = async (req, res, next) => {
       }
     }
 
-    // Sequential AI calls with retry
-    const parsedResume = await withRetry(() => deepParseWithAI(resumeText));
-    const ragAnalysis = await withRetry(() => ragAnalyzeResume(resumeText, jobDescription, requiredSkills));
+    // Sequential AI calls — deepParseWithAI / ragAnalyzeResume already retry-with-backoff
+    // internally via patchOpenAI, so no extra wrapper is needed (and withRetry doesn't
+    // actually exist in openaiRetry.js — that import was throwing on every request).
+    const parsedResume = await deepParseWithAI(resumeText);
+    const ragAnalysis = await ragAnalyzeResume(resumeText, jobDescription, requiredSkills);
+
+    // Embed the resume ONCE and reuse it below — previously this same text was embedded
+    // 3 separate times (here, in storeResumeEmbedding, and in getSemanticFitScore),
+    // tripling OpenAI embedding calls for every single analysis.
+    let resumeVector = null;
+    try {
+      resumeVector = await embedText(resumeText);
+    } catch (e) {
+      console.warn('[Embedding] resume embed failed:', e.message);
+    }
 
     // Fire-and-forget embedding
-    storeResumeEmbedding(student._id, resumeText, {
-      parsedSkills: student.skills,
-      department: student.department,
-      cgpa: student.cgpa,
-    }).catch((e) => console.warn('[Embedding store]', e.message));
+    if (resumeVector) {
+      storeResumeEmbedding(student._id, resumeText, {
+        parsedSkills: student.skills,
+        department: student.department,
+        cgpa: student.cgpa,
+      }, resumeVector).catch((e) => console.warn('[Embedding store]', e.message));
+    }
 
-    // Semantic score
+    // Semantic score (reuses resumeVector instead of re-embedding)
     let semanticScore = ragAnalysis.semanticScore || 0;
     try {
-      const semScore = await getSemanticFitScore(resumeText, jobDescription);
+      const semScore = await getSemanticFitScore(resumeText, jobDescription, resumeVector);
       if (semScore !== null) semanticScore = semScore;
     } catch (_) {}
 
     // ATS score
     const atsScore = computeATSScore(parsedResume, requiredSkills);
 
-    // Profile comparison
-    const profileComparison = jdAnalysis ? compareProfileToJD(student, jdAnalysis) : null;
+    // Profile comparison — pass the AI-normalized resume skills too, so a skill that's on
+    // the resume but missing from the self-entered profile field still counts as a match
+    const profileComparison = jdAnalysis ? compareProfileToJD(student, jdAnalysis, parsedResume.skills) : null;
 
     // Blended score
     const finalFitScore = Math.round(
@@ -195,7 +209,10 @@ exports.analyzeResume = async (req, res, next) => {
 
   } catch (error) {
     console.error('[analyzeResume] FULL ERROR:', error);
-    if (error?.status === 429) return errorResponse(res, 'OpenAI rate limit. Please wait a moment.', 429);
+    if (error?.status === 429) {
+      console.error('[AI] OpenAI 429 — code:', error?.code, '| type:', error?.error?.type, '| message:', error?.message);
+      return errorResponse(res, 'OpenAI rate limit. Please wait a moment.', 429);
+    }
     next(error);
   }
 };
@@ -249,7 +266,10 @@ exports.generateInterviewPrep = async (req, res, next) => {
 
     return successResponse(res, { prep, roleTitle: role.roleTitle, companyName: company.name }, 'Interview prep generated');
   } catch (error) {
-    if (error?.status === 429) return errorResponse(res, 'OpenAI rate limit. Please wait.', 429);
+    if (error?.status === 429) {
+      console.error('[AI] OpenAI 429 — code:', error?.code, '| type:', error?.error?.type, '| message:', error?.message);
+      return errorResponse(res, 'OpenAI rate limit. Please wait.', 429);
+    }
     next(error);
   }
 };

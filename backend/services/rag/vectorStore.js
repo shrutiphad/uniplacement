@@ -26,9 +26,9 @@ const cosineSimilarity = (a, b) => {
 };
 
 //  Store resume embedding in DB 
-const storeResumeEmbedding = async (userId, resumeText, metadata = {}) => {
+const storeResumeEmbedding = async (userId, resumeText, metadata = {}, precomputedVector = null) => {
   try {
-    const vector = await embedText(resumeText);
+    const vector = precomputedVector || await embedText(resumeText);
     await ResumeVector.findOneAndUpdate(
       { userId },
       { userId, vector, resumeText: resumeText.slice(0, 5000), metadata, updatedAt: new Date() },
@@ -58,10 +58,10 @@ const storeJDEmbedding = async (roleId, jdText, metadata = {}) => {
 };
 
 
-const getSemanticFitScore = async (resumeText, jdText) => {
+const getSemanticFitScore = async (resumeText, jdText, precomputedResumeVector = null) => {
   try {
     const [resumeVec, jdVec] = await Promise.all([
-      embedText(resumeText),
+      precomputedResumeVector ? Promise.resolve(precomputedResumeVector) : embedText(resumeText),
       embedText(jdText),
     ]);
     const similarity = cosineSimilarity(resumeVec, jdVec);

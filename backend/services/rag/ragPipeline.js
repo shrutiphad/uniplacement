@@ -1,9 +1,6 @@
-const OpenAI = require('openai');
+const { chatCompletion } = require('../../utils/groqClient');
 const { embedText, cosineSimilarity } = require('./vectorStore');
-const { patchOpenAI } = require('../../utils/openaiRetry');
-const openai = patchOpenAI(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
 
-//  Chunk text into overlapping windows 
 const chunkText = (text, chunkSize = 500, overlap = 100) => {
   const words = text.split(/\s+/).filter(Boolean);
   const chunks = [];
@@ -14,7 +11,6 @@ const chunkText = (text, chunkSize = 500, overlap = 100) => {
   return chunks;
 };
 
-//  Embed all chunks in a document 
 const embedDocument = async (text, docId) => {
   const chunks = chunkText(text);
   const embedded = [];
@@ -22,14 +18,11 @@ const embedDocument = async (text, docId) => {
     try {
       const vector = await embedText(chunk.text);
       embedded.push({ docId, text: chunk.text, vector, startIdx: chunk.startIdx });
-    } catch (err) {
-      // Skip failed chunks
-    }
+    } catch (err) {}
   }
   return embedded;
 };
 
-//  Retrieve top-k relevant chunks for a query 
 const retrieveChunks = (query_vector, chunks, topK = 5) => {
   const scored = chunks.map((c) => ({
     ...c,
@@ -38,19 +31,12 @@ const retrieveChunks = (query_vector, chunks, topK = 5) => {
   return scored.sort((a, b) => b.score - a.score).slice(0, topK);
 };
 
-//  RAG-enhanced resume analysis 
 const ragAnalyzeResume = async (resumeText, jobDescription, requiredSkills) => {
-  // 1. Chunk resume
   const resumeChunks = await embedDocument(resumeText, 'resume');
-
-  // 2. Embed the job description as query
   const jdEmbedding = await embedText(jobDescription + ' ' + requiredSkills.join(' '));
-
-  // 3. Retrieve most relevant resume sections
   const relevantChunks = retrieveChunks(jdEmbedding, resumeChunks, 6);
   const retrievedContext = relevantChunks.map((c) => c.text).join('\n\n---\n\n');
 
-  // 4. Build augmented prompt with retrieved context
   const prompt = `
 You are an expert AI career counselor and technical recruiter performing deep resume analysis.
 
@@ -106,8 +92,8 @@ Perform a COMPREHENSIVE analysis and return a STRICT JSON object:
   "missingSkills": ["Docker", "Kubernetes"],
   "partialSkills": [{"skill": "AWS", "gap": "has basics but lacks advanced cloud architecture"}],
   "suggestions": [
-    "Add Docker containerization experience — role requires microservices deployment",
-    "Quantify project impact: instead of 'improved performance', say 'reduced load time by 45%'"
+    "Add Docker containerization experience - role requires microservices deployment",
+    "Quantify project impact: instead of improved performance, say reduced load time by 45%"
   ],
   "resumeStructureScore": 75,
   "resumeStructureFeedback": "Add a dedicated skills section at the top for ATS optimization",
@@ -130,21 +116,12 @@ Rules:
 - Return ONLY valid JSON, no markdown fences
 `;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: 'You are an expert AI resume analyzer. Return only valid JSON. Never add markdown code fences.' },
-      { role: 'user', content: prompt }
-    ],
-    temperature: 0.2,
-    max_tokens: 2500,
-    response_format: { type: 'json_object' },
-  });
-
-  return JSON.parse(response.choices[0].message.content);
+  return chatCompletion([
+    { role: 'system', content: 'You are an expert AI resume analyzer. Return only valid JSON. Never add markdown code fences.' },
+    { role: 'user', content: prompt }
+  ], { temperature: 0.2, max_tokens: 2500 });
 };
 
-//  RAG-enhanced JD Analysis 
 const ragAnalyzeJD = async (jobDescription, companyContext = '') => {
   const prompt = `
 You are an expert technical recruiter and job market analyst.
@@ -174,26 +151,18 @@ Perform deep JD analysis. Return STRICT JSON:
   "salaryInsight": "Market rate for this role: 15-25 LPA",
   "roleDescription": "2-sentence clean role summary",
   "keyResponsibilities": ["Design scalable backend services", "Lead code reviews"],
-  "growthPotential": "High — role offers path to tech lead in 2 years",
-  "redFlags": ["Vague requirements around ML — might be stretch role"],
+  "growthPotential": "High - role offers path to tech lead in 2 years",
+  "redFlags": ["Vague requirements around ML - might be stretch role"],
   "companyCultureHints": ["Fast-paced startup", "High ownership expected"]
 }
 
 Return ONLY valid JSON.
 `;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: 'You are an expert JD analyzer. Return only valid JSON.' },
-      { role: 'user', content: prompt }
-    ],
-    temperature: 0.3,
-    max_tokens: 1800,
-    response_format: { type: 'json_object' },
-  });
-
-  return JSON.parse(response.choices[0].message.content);
+  return chatCompletion([
+    { role: 'system', content: 'You are an expert JD analyzer. Return only valid JSON.' },
+    { role: 'user', content: prompt }
+  ], { temperature: 0.3, max_tokens: 1800 });
 };
 
 module.exports = { ragAnalyzeResume, ragAnalyzeJD, chunkText, embedDocument, retrieveChunks };

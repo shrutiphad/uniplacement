@@ -1,7 +1,4 @@
-const OpenAI = require('openai');
-
-const { patchOpenAI } = require('../../utils/openaiRetry');
-const openai = patchOpenAI(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
+const { chatCompletion } = require('../../utils/groqClient');
 
 //  Known skill taxonomy for normalization 
 const SKILL_ALIASES = {
@@ -165,18 +162,10 @@ Return ONLY valid JSON (no markdown):
 }
 `;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: 'You are a precise resume parser. Output only valid JSON.' },
-      { role: 'user', content: prompt }
-    ],
-    temperature: 0.1,
-    max_tokens: 2000,
-    response_format: { type: 'json_object' },
-  });
-
-  const parsed = JSON.parse(response.choices[0].message.content);
+ const parsed = await chatCompletion([
+  { role: 'system', content: 'You are a precise resume parser. Output only valid JSON.' },
+  { role: 'user', content: prompt }
+], { temperature: 0.1, max_tokens: 2000 });
 
   // Merge AI-extracted skills with regex-extracted skills
   const allSkills = [...new Set([
