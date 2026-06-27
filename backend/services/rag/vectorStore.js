@@ -58,11 +58,11 @@ const storeJDEmbedding = async (roleId, jdText, metadata = {}) => {
 };
 
 
-const getSemanticFitScore = async (resumeText, jdText, precomputedResumeVector = null) => {
+const getSemanticFitScore = async (resumeText, jdText, precomputedResumeVector = null, precomputedJdVector = null) => {
   try {
     const [resumeVec, jdVec] = await Promise.all([
       precomputedResumeVector ? Promise.resolve(precomputedResumeVector) : embedText(resumeText),
-      embedText(jdText),
+      precomputedJdVector ? Promise.resolve(precomputedJdVector) : embedText(jdText),
     ]);
     const similarity = cosineSimilarity(resumeVec, jdVec);
     // Scale: cosine sim [0,1] → [0,100], typical range 0.5-0.9

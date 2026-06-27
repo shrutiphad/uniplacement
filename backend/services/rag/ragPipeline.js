@@ -116,10 +116,14 @@ Rules:
 - Return ONLY valid JSON, no markdown fences
 `;
 
-  return chatCompletion([
+  const llmResult = await chatCompletion([
     { role: 'system', content: 'You are an expert AI resume analyzer. Return only valid JSON. Never add markdown code fences.' },
     { role: 'user', content: prompt }
   ], { temperature: 0.2, max_tokens: 2500 });
+
+  // Attach the JD embedding we already computed for retrieval — lets the controller
+  // reuse it for getSemanticFitScore instead of embedding the same JD text again.
+  return { ...llmResult, _jdEmbedding: jdEmbedding };
 };
 
 const ragAnalyzeJD = async (jobDescription, companyContext = '') => {

@@ -132,10 +132,11 @@ exports.analyzeResume = async (req, res, next) => {
       }, resumeVector).catch((e) => console.warn('[Embedding store]', e.message));
     }
 
-    // Semantic score (reuses resumeVector instead of re-embedding)
+    // Semantic score (reuses resumeVector AND the JD vector ragAnalyzeResume already
+    // computed — eliminates the last redundant OpenAI embedding call in this flow)
     let semanticScore = ragAnalysis.semanticScore || 0;
     try {
-      const semScore = await getSemanticFitScore(resumeText, jobDescription, resumeVector);
+      const semScore = await getSemanticFitScore(resumeText, jobDescription, resumeVector, ragAnalysis._jdEmbedding);
       if (semScore !== null) semanticScore = semScore;
     } catch (_) {}
 
