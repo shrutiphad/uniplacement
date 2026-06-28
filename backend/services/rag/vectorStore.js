@@ -1,17 +1,6 @@
-const OpenAI = require('openai');
 const ResumeVector = require('../../models/ResumeVector.js');
-const { patchOpenAI } = require('../../utils/openaiRetry');
-const openai = patchOpenAI(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
+const { embedText } = require('../../utils/localEmbedder');
 
-//  Embed text → float[] 
-const embedText = async (text) => {
-  const cleaned = text.replace(/\s+/g, ' ').trim().slice(0, 8000); // model limit
-  const response = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: cleaned,
-  });
-  return response.data[0].embedding; // float32[]  1536-dim
-};
 
 //  Cosine Similarity 
 const cosineSimilarity = (a, b) => {

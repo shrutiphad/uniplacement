@@ -1,8 +1,5 @@
-const OpenAI = require('openai');
 const { ragAnalyzeJD } = require('../rag/ragPipeline');
-const { patchOpenAI } = require('../../utils/openaiRetry');
 const { normalizeSkill } = require('./resumeParser');
-const openai = patchOpenAI(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
 
 //  Heuristic seniority detector 
 const detectSeniority = (jdText) => {

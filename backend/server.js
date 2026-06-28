@@ -57,6 +57,7 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('MongoDB is connected');
     app.listen(PORT, () => console.log(` Server is running http://localhost:${PORT}`));
+      require('./utils/localEmbedder').warmUpEmbedder();
   })
   .catch(err => { console.error(' MongoDB failed:', err.message); process.exit(1); });
 
