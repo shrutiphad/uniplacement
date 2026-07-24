@@ -6,10 +6,19 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { Users, Building2, FileText, TrendingUp, Loader2, RefreshCw } from 'lucide-react';
+import { Users, Building2, FileText, TrendingUp, Loader2, RefreshCw, Inbox } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const COLORS = ['#f59e0b', '#3b82f6', '#8b5cf6', '#10b981', '#ef4444', '#f97316'];
+
+function ChartEmpty({ message = 'No data yet', height = 240 }) {
+  return (
+    <div className="flex flex-col items-center justify-center text-dark-500" style={{ height }}>
+      <Inbox className="w-8 h-8 mb-2" />
+      <p className="text-sm">{message}</p>
+    </div>
+  );
+}
 
 function StatCard({ icon: Icon, label, value, sub, color = 'brand' }) {
   const colorMap = { brand: 'text-brand-400 bg-brand-500/10', blue: 'text-blue-400 bg-blue-500/10', green: 'text-green-400 bg-green-500/10', purple: 'text-purple-400 bg-purple-500/10' };
@@ -96,6 +105,7 @@ export default function AdminDashboard() {
         {/* Applications per Company */}
         <div className="card p-6">
           <h2 className="font-display font-bold text-white mb-5">Applications per Company</h2>
+          {companyData.length > 0 ? (
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={companyData} margin={{ top: 0, right: 10, bottom: 20, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
@@ -106,11 +116,13 @@ export default function AdminDashboard() {
               <Bar dataKey="selected" fill="#10b981" radius={[4,4,0,0]} name="Selected" />
             </BarChart>
           </ResponsiveContainer>
+          ) : <ChartEmpty message="No applications yet" />}
         </div>
 
         {/* Fit Score Distribution */}
         <div className="card p-6">
           <h2 className="font-display font-bold text-white mb-5">Fit Score Distribution</h2>
+          {fitData.length > 0 ? (
           <div className="flex items-center justify-center gap-10">
             <ResponsiveContainer width={200} height={200}>
               <PieChart>
@@ -130,6 +142,7 @@ export default function AdminDashboard() {
               ))}
             </div>
           </div>
+          ) : <ChartEmpty message="No fit scores yet" height={200} />}
         </div>
       </div>
 
@@ -138,6 +151,7 @@ export default function AdminDashboard() {
         {/* Department Participation */}
         <div className="card p-6">
           <h2 className="font-display font-bold text-white mb-5">Department Participation</h2>
+          {deptData.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={deptData} layout="vertical" margin={{ left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" horizontal={false} />
@@ -148,11 +162,13 @@ export default function AdminDashboard() {
               <Bar dataKey="selected" fill="#10b981" radius={[0,4,4,0]} name="Selected" />
             </BarChart>
           </ResponsiveContainer>
+          ) : <ChartEmpty message="No department data yet" height={220} />}
         </div>
 
         {/* Placement Trends */}
         <div className="card p-6">
           <h2 className="font-display font-bold text-white mb-5">Placement Trends</h2>
+          {formattedTrends.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={formattedTrends}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
@@ -163,6 +179,7 @@ export default function AdminDashboard() {
               <Line type="monotone" dataKey="selected" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="Selected" />
             </LineChart>
           </ResponsiveContainer>
+          ) : <ChartEmpty message="No placement trend data yet" height={220} />}
         </div>
       </div>
 

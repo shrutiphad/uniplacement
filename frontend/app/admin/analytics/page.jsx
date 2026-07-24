@@ -6,10 +6,19 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart,
   Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
-import { Loader2, TrendingUp, Users, Building2, Award } from 'lucide-react';
+import { Loader2, TrendingUp, Users, Building2, Award, Inbox } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const COLORS = ['#f59e0b', '#3b82f6', '#8b5cf6', '#10b981', '#ef4444', '#f97316', '#06b6d4'];
+
+function ChartEmpty({ message = 'No data yet', height = 260 }) {
+  return (
+    <div className="flex flex-col items-center justify-center text-dark-500" style={{ height }}>
+      <Inbox className="w-8 h-8 mb-2" />
+      <p className="text-sm">{message}</p>
+    </div>
+  );
+}
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -123,6 +132,7 @@ export default function AdminAnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-6">
           <h2 className="font-display font-bold text-white mb-5">Company Performance</h2>
+          {companies?.length > 0 ? (
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={companies} margin={{ bottom: 30 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
@@ -135,10 +145,12 @@ export default function AdminAnalyticsPage() {
               <Bar dataKey="selected" fill="#10b981" radius={[4,4,0,0]} name="Selected" />
             </BarChart>
           </ResponsiveContainer>
+          ) : <ChartEmpty message="No company data yet" />}
         </div>
 
         <div className="card p-6">
           <h2 className="font-display font-bold text-white mb-5">Fit Score Distribution</h2>
+          {fit?.length > 0 ? (
           <div className="flex items-center gap-6">
             <ResponsiveContainer width={200} height={200}>
               <PieChart>
@@ -158,6 +170,7 @@ export default function AdminAnalyticsPage() {
               ))}
             </div>
           </div>
+          ) : <ChartEmpty message="No fit scores yet" height={200} />}
         </div>
       </div>
 

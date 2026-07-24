@@ -5,10 +5,6 @@ import { useAuth } from '@/lib/auth-context';
 import { STATUS_COLORS, getFitScoreColor, getFitScoreBg, formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  ResponsiveContainer, Tooltip
-} from 'recharts';
-import {
   Sparkles, BookOpen, Building2, FileText, Target,
   TrendingUp, AlertCircle, CheckCircle, Loader2, ArrowRight, Zap
 } from 'lucide-react';
@@ -35,11 +31,8 @@ export default function StudentDashboard() {
   );
 
   const { stats, applications } = analytics || {};
-
-  // Radar chart data from skills
-  const radarData = (user?.skills || []).slice(0, 6).map((skill) => ({
-    subject: skill, A: Math.floor(50 + Math.random() * 50), fullMark: 100,
-  }));
+  const skillCoverage = stats?.skillCoverage ?? 0;
+  const appliedCount = stats?.totalApplied || 0;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -110,26 +103,42 @@ export default function StudentDashboard() {
           </Link>
         </div>
 
-        {/* Skill Radar */}
+        {/* Skill Coverage */}
         <div className="card p-6 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-5">
             <p className="font-medium text-dark-200">Skill Coverage</p>
             <span className="text-dark-500 text-xs">{user?.skills?.length || 0} skills on profile</span>
           </div>
-          {radarData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <RadarChart data={radarData}>
-                <PolarGrid stroke="#2a2a2a" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: '#6e6e6e', fontSize: 11 }} />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar name="Skills" dataKey="A" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.15} strokeWidth={2} />
-                <Tooltip contentStyle={{ background: '#1e1e1e', border: '1px solid #2a2a2a', borderRadius: 8 }} />
-              </RadarChart>
-            </ResponsiveContainer>
+          {user?.skills?.length > 0 ? (
+            <>
+              {/* Real coverage metric from applied roles */}
+              <div className="flex items-end justify-between mb-2">
+                <div>
+                  <span className={`font-display text-3xl font-bold ${getFitScoreColor(skillCoverage)}`}>{skillCoverage}%</span>
+                  <span className="text-dark-500 text-sm ml-2">of required skills matched</span>
+                </div>
+                <span className="text-dark-500 text-xs">
+                  {appliedCount > 0
+                    ? `across ${appliedCount} applied role${appliedCount === 1 ? '' : 's'}`
+                    : 'apply to a role to measure fit'}
+                </span>
+              </div>
+              <div className="progress-bar mb-5">
+                <div className={`progress-fill ${getFitScoreBg(skillCoverage)}`} style={{ width: `${skillCoverage}%` }} />
+              </div>
+
+              {/* Skills on profile */}
+              <div className="flex flex-wrap gap-2">
+                {user.skills.map((s) => (
+                  <span key={s} className="badge bg-dark-700 text-dark-200 border-dark-600">{s}</span>
+                ))}
+              </div>
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center h-40 text-dark-500">
               <Target className="w-8 h-8 mb-2" />
               <p className="text-sm">Add skills to your profile to see coverage</p>
+              <Link href="/student/profile" className="text-brand-400 text-xs mt-2 hover:text-brand-300">Update profile →</Link>
             </div>
           )}
         </div>
